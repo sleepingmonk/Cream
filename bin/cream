@@ -6,7 +6,7 @@
  * Cream command line tool.
  */
 
-$loader = require __DIR__.'/../../autoload.php';
+$loader = require __DIR__.'/../../../autoload.php';
 $loader->add('sleepingmonk', __DIR__.'/../src/');
 
 use sleepingmonk\Console\Cream;

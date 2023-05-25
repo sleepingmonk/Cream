@@ -6,8 +6,8 @@
  * Cream command line tool.
  */
 
-$loader = require __DIR__.'/../vendor/autoload.php';
-$loader->add('sleepingmonk', __DIR__.'/../src/');
+$loader = require __DIR__.'/../autoload.php';
+$loader->add('sleepingmonk', __DIR__.'/../sleepingmonk/cream/src/');
 
 use sleepingmonk\Console\Cream;
 use Symfony\Component\Console\Input\InputArgument;

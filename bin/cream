@@ -1,0 +1,240 @@
+#!/usr/bin/env php
+<?php
+
+require __DIR__.'/../vendor/autoload.php';
+// require __DIR__.'/../vendor/phplucidframe/console-table/src/LucidFrame/Console/ConsoleTable.php';
+
+
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\SingleCommandApplication;
+use LucidFrame\Console\ConsoleTable;
+
+(new SingleCommandApplication())
+  ->addArgument('file', InputArgument::OPTIONAL, 'The file to cream.')
+  ->addOption('report', 'r', InputOption::VALUE_NONE, 'Show report.')
+  ->setCode(function (InputInterface $input, OutputInterface $output) {
+    $filename = $input->getArgument('file') . '.json';
+
+    if (!$filename) {
+      // Read input.
+      $filename = readline("\nEnter the filename: ") . '.json';
+    }
+
+    @$file = fopen($filename, 'r');
+
+    if (!$file) {
+      $output->writeln("\nCould not open file $filename. Creating it.");
+      $file = touch($filename);
+    }
+
+    $cream = new Cream($filename);
+
+    if ($input->getOption('report')) {
+      $output->writeln("\n\nThe cream has risen!\n");
+      $cream->report();
+      exit();
+    }
+
+    if (empty($cream->getItems())) {
+      while (TRUE) {
+        $items = $cream->getItems();
+        $count = is_array($items) ? count($items) : 0;
+        $output->writeln("\n$count items found in file. Please add at least " . max(2 - $count, 0) . " items.");
+        $item = readline('Type an item for comparison: [enter to finish] ');
+
+        if ($item) {
+          $cream->addItem($item);
+        }
+
+        if (!$item && count($cream->getItems()) >= 2) {
+          break;
+        }
+
+      }
+    }
+
+    if (empty($cream->getDimensions())) {
+      while (TRUE) {
+        $dimensions = $cream->getDimensions();
+        $count = is_array($dimensions) ? count($dimensions) : 0;
+        $output->writeln("\n$count demensions found in file. Please add at least " . max(2 - $count, 0) . " dimensions.");
+        $item = readline('Type a dimension for comparison: [enter to finish] ');
+
+        if ($item) {
+          $cream->addDimension($item);
+        }
+
+        if (!$item && count($cream->getDimensions()) >= 2) {
+          break;
+        }
+      }
+    }
+
+    $output->writeln("\nCreaming " . $filename . " with dimensions: " . implode(',', $cream->getDimensions()));
+
+    $output->writeln("Let's GO!");
+
+    $dimensions = $cream->getDimensions();
+
+    foreach ($dimensions as $dimension) {
+      $items = $cream->getItems();
+      $output->writeln("------------------ $dimension ------------------");
+
+      while (!empty($items)) {
+        $exists = false;
+        while (!$exists) {
+          $i = rand(0, count($items));
+          $exists = array_key_exists($i, $items);
+        }
+        $a = $items[$i];
+        unset($items[$i]);
+        $items = array_values($items);
+
+        foreach ($items as $b) {
+          $output->writeln("\nDimension: " . $dimension);
+          $output->writeln("\n1) " . $a . " vs 0) " . $b);
+          $prompt = 'Who wins? [1/0] ';
+          $winner = null;
+
+          while ($winner != '1' && $winner != '0') {
+            readline_callback_handler_install($prompt, function() {});
+            $winner = stream_get_contents(STDIN, 1);
+            if ($winner == '1') {
+              $output->writeln("\n" . $a . " wins!");
+              $cream->increment($a, $dimension);
+            }
+            else {
+              $output->writeln("\n" . $b . " wins!");
+              $cream->increment($b, $dimension);
+            }
+          }
+        }
+      }
+    }
+
+    $cream->writeJson();
+
+    $output->writeln("\n\nThe cream has risen!\n");
+    $cream->report();
+  })
+  ->run();
+
+
+class Cream {
+
+  private $filename;
+
+  private $dimensions;
+
+  private $items;
+
+  private $json;
+
+  private $data;
+
+  public function __construct(string $filename) {
+    $this->filename = $filename;
+
+    $this->json = file_get_contents($this->filename);
+    $this->data = json_decode($this->json, true);
+
+    if ($this->data) {
+      foreach ($this->data as $item) {
+        $this->items[] = $item['name'];
+
+        foreach ($item['dimensions'] as $dimension => $value) {
+          $this->dimensions[] = $dimension;
+        }
+        $this->dimensions = array_unique($this->dimensions);
+      }
+    }
+  }
+
+  public function addItem($item) {
+    $this->items[] = $item;
+  }
+
+  public function getItems() {
+    return $this->items;
+  }
+
+  public function addDimension($dimension) {
+    $this->dimensions[] = $dimension;
+  }
+
+  public function getDimensions() {
+    return $this->dimensions;
+  }
+
+  public function increment($name, $dimension) {
+    $exists = false;
+    foreach ($this->data as $i => $item) {
+      if ($item['name'] == $name) {
+        $exists = true;
+
+        if (!array_key_exists($dimension, $this->data[$i]['dimensions'])) {
+          $this->data[$i]['dimensions'][$dimension] = 0;
+        }
+
+        $this->data[$i]['dimensions'][$dimension]++;
+      }
+    }
+
+    if (!$exists) {
+      $this->data[] = [
+        'name' => $name,
+        'dimensions' => [
+          $dimension => 1,
+        ],
+      ];
+    }
+  }
+
+  public function getData() {
+    return $this->data;
+  }
+
+  public function writeJson() {
+    $this->json = fopen($this->filename, 'w');
+    fwrite($this->json, json_encode($this->data));
+    fclose($this->json);
+  }
+
+  public function report() {
+    $table = new ConsoleTable();
+    $table->addHeader('Item');
+    $dimensions = $this->getDimensions();
+    $data = $this->getData();
+
+    if (!empty($dimensions)) {
+      foreach ($dimensions as $dimension) {
+        $table->addHeader($dimension);
+      }
+    }
+
+    $table->addHeader('Total');
+
+    if (!empty($data)) {
+      foreach ($data as $item) {
+        $tally = 0;
+        $table->addRow();
+        $table->addColumn($item['name']);
+        foreach ($dimensions as $dimension) {
+          if (array_key_exists($dimension, $item['dimensions'])) {
+            $tally += $item['dimensions'][$dimension];
+            $table->addColumn($item['dimensions'][$dimension]);
+            continue;
+          }
+          $table->addColumn(0);
+        }
+        $table->addColumn($tally);
+      }
+    }
+
+    $table->display();
+  }
+
+}

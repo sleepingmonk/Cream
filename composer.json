@@ -1,0 +1,20 @@
+{
+    "name": "sleepingmonk/cream",
+    "description": "Compare any number of arbitrary items across any number of arbitrary dimensions, via a simple voting mechanism. Get a report of what got the most votes in each category, and what got the most votes overall.",
+    "type": "project",
+    "require": {
+        "symfony/console": "^6.2",
+        "phplucidframe/console-table": "^1.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Calvintyndall\\Cream\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Calvin Tyndall (sleepingmonk)",
+            "email": "calvin@bionic.studio"
+        }
+    ]
+}

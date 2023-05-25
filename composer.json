@@ -1,6 +1,7 @@
 {
     "name": "sleepingmonk/cream",
     "description": "Compare any number of arbitrary items across any number of arbitrary dimensions, via a simple voting mechanism. Get a report of what got the most votes in each category, and what got the most votes overall.",
+    "bin": ["bin/cream"],
     "type": "project",
     "license": "MIT",
     "require": {
